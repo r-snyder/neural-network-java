@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="linearalgebra">
-    <CLASSES>
-      <root url="jar://$PROJECT_DIR$/../linearalgebra/linearalgebra.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

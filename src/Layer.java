@@ -1,67 +1,42 @@
-import linearalgebra.Matrix;
-import linearalgebra.Vector;
+import org.ejml.simple.SimpleMatrix;
 
-public class Layer {
-    // initialValues are the results of the matrix multiplication from the forward pass
-    // but it won't be a 1d array but a 2d array of size n and m where m is the number of samples.
-    double[][] initialValues;
-    Matrix values;
-    double[] biases;
-    int samples;
-    int size;
+public abstract class Layer {
+    protected SimpleMatrix weights, biases, cachedInput, cachedOutput, gradientWeight, gradientBiases;
+    protected ActivationFunction activation;
 
-    // Constructor
-    public Layer(int size, int samples) {
-        this.size = size;
-        this.samples = samples;
-        this.initialValues = new double[size][samples];
-        this.biases = new double[size];
+    abstract SimpleMatrix forward(SimpleMatrix input);
+    abstract SimpleMatrix forwardNoGrad(SimpleMatrix input);
+    abstract SimpleMatrix backward(SimpleMatrix gradient);
+    abstract SimpleMatrix backwardOutput(SimpleMatrix gradient);
+
+    void updateWeights(double learningRate) {
+
+        this.weights = this.weights.minus(gradientWeight.scale(learningRate));
     }
 
-    public double[][] getInitialValues() {
-        return initialValues;
+    void updateBiases(double learningRate) {
+        this.biases = this.biases.minus(gradientBiases.scale(learningRate));
     }
-
-    public void setInitialValues(double[][] initialValues) {
-        this.initialValues = initialValues;
-    }
-
-    public double[] getBiases() {
-        return biases;
-    }
-
-    public void setBiases(double[] biases) {
-        this.biases = biases;
-    }
-
-    public void setBiases(Matrix biases) {
-        //we need to basically undo the broadcast...
-        //this is probably dumb but whatever
-        double[] bias = new double[this.biases.length];
-        Vector row = biases.getRow(0);
-        for(int c = 0; c < row.length(); c++) {
-            bias[c] = row.get(c);
+    //sum up a given matrix by its rows to end up with an n^l X 1 matrix
+    SimpleMatrix sum(SimpleMatrix m) {
+        double[][] summation = new double[m.getNumRows()][1];
+        for(int r = 0; r < m.getNumRows(); r++) {
+            double rowSum = 0;
+            for(int c = 0; c < m.getNumCols(); c++) {
+                rowSum += m.get(r, c);
+            }
+            summation[r][0] = rowSum;
         }
-        this.biases = bias;
+        return new SimpleMatrix(summation);
     }
-    public Matrix getBiasesMatrix() {
-        //we need to broadcast this biases from n, 1 to n, m where m is the number of samples...
-        // in our case it needs to go from a 3x1 to a 3x10 which we can get by copying our 3x1 10 times.
-        double[][] biasesMatrix = new double[this.biases.length][this.samples];
-        for(int j = 0; j < this.samples; j++) {
-            for(int i = 0; i < this.biases.length; i++) {
-                //this should work. outer loop should loop 10 times (0-9) inner loop should loop 3 times (0-2)
-                //so for each sample(M) we have one biases "matrix" but they're combined into one...
-                biasesMatrix[i][j] = this.biases[i];
+
+    public static SimpleMatrix elementWiseMinus(SimpleMatrix a, double b) {
+        double[][] oneMinusA2 = new double[a.getNumRows()][a.getNumCols()];
+        for(int r = 0; r < a.getNumRows(); r++) {
+            for(int c = 0; c < a.getNumCols(); c++) {
+                oneMinusA2[r][c] = b - a.get(r, c);
             }
         }
-        return new Matrix(biasesMatrix);
-    }
-    public Matrix getBiasesMatrixUpdate() {
-        double[][] biasesMatrix = new double[this.biases.length][1];
-        for(int i = 0; i < this.biases.length; i++) {
-            biasesMatrix[i][0] = this.biases[i];
-        }
-        return new Matrix(biasesMatrix);
+        return new SimpleMatrix(oneMinusA2);
     }
 }
